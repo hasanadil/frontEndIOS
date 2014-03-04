@@ -13,7 +13,7 @@
 @interface Question3TableViewController ()
 
 @property (strong) NSMutableArray* friends;
-@property (strong) NSMutableArray* fns;
+@property (strong) NSMutableArray* friendsToDelete;
 
 @end
 
@@ -27,7 +27,9 @@
         self.view.backgroundColor = [UIColor whiteColor];
         
         [self setFriends:[NSMutableArray array]];
-        [self setFns:[NSMutableArray array]];
+        [self setFriendsToDelete:[NSMutableArray array]];
+        
+        NSMutableArray* fns = [NSMutableArray array];
         
         // All callbacks happen on background thread
         [API listenForFriendActions:^(NSArray* actionInfos) {
@@ -36,32 +38,45 @@
             for (NSDictionary* actionInfo in actionInfos) {
                 
                 NSString* action = [actionInfo objectForKey:@"action"];
-                NSDictionary* friend = [actionInfo objectForKey:@"friend"];
+                NSMutableDictionary* friend = [NSMutableDictionary dictionaryWithDictionary:[actionInfo objectForKey:@"friend"]];
+                [friend setObject:@NO forKey:@"touched"];
+                [friend setObject:action forKey:@"action"];
                 
                 if ([action isEqualToString:@"add"]) {
-                    NSLog(@"adding %@", [friend objectForKey:@"id"]);
                     
                     AsyncFn fn = ^(CallbackFn callback) {
                         [self.friends addObject:friend];
                         callback([NSString stringWithFormat:@"added %@", [friend objectForKey:@"id"]]);
                     };
                     
-                    [self.fns addObject:fn];
+                    [fns addObject:fn];
                 }
                 else if ([action isEqualToString:@"remove"]) {
-                    NSLog(@"removing %@", [friend objectForKey:@"id"]);
                     
                     AsyncFn fn = ^(CallbackFn callback) {
-                        [self.friends removeObject:friend];
-                        callback([NSString stringWithFormat:@"removed %@", [friend objectForKey:@"id"]]);
+                        if ([self isBeingRemoved:friend]) {
+                            
+                            for (NSDictionary* currentFriend in self.friends) {
+                                if ([[currentFriend objectForKey:@"id"] isEqual:[friend objectForKey:@"id"]]) {
+                                    [self.friends removeObject:currentFriend];
+                                    [self.friendsToDelete addObject:currentFriend];
+                                    break;
+                                }
+                            }
+                            
+                            callback([NSString stringWithFormat:@"removed %@", [friend objectForKey:@"id"]]);
+                        }
+                        else {
+                            callback([NSString stringWithFormat:@"not removed %@", [friend objectForKey:@"id"]]);
+                        }
                     };
                     
-                    [self.fns addObject:fn];
+                    [fns addObject:fn];
                 }
             }
             
-            [Question1 asyncMap:self.fns whenDone:^(NSArray* res0) {
-                [self.fns removeAllObjects];
+            [Question1 asyncMap:fns whenDone:^(NSArray* res0) {
+                [fns removeAllObjects];
                 [Question1 onMainThread:^{
                     [[self tableView] reloadData];
                 }];
@@ -81,7 +96,18 @@
       cell = [[UITableViewCell alloc] initWithStyle:UITableViewCellStyleSubtitle reuseIdentifier:@"MyIdentifier"];
     }
     
-    [[cell textLabel] setText:[[self.friends objectAtIndex:indexPath.row] objectForKey:@"name"]];
+    NSDictionary* friend = [self.friends objectAtIndex:indexPath.row];
+    [[cell textLabel] setText:[friend objectForKey:@"name"]];
+    
+    [[cell textLabel] setTextColor:[UIColor blackColor]];
+    [cell setAccessoryType:UITableViewCellAccessoryNone];
+    
+    if ([self isTouched:friend]) {
+        if ([self isBeingRemoved:friend]) {
+            [[cell textLabel] setTextColor:[UIColor redColor]];
+            [cell setAccessoryType:UITableViewCellAccessoryCheckmark];
+        }
+    }
     
     return cell;
 }
@@ -94,12 +120,36 @@
 
 // Table Cell Touch
 - (void)  tableView:(UITableView*)tableView didSelectRowAtIndexPath:(NSIndexPath*)indexPath {
+    [tableView deselectRowAtIndexPath:indexPath animated:YES];
+    
+    NSMutableDictionary* friend = [self.friends objectAtIndex:indexPath.row];
+    if ([self isTouched:friend]) {
+        if ([self isBeingRemoved:friend]) {
+            [friend setObject:@"" forKey:@"action"];
+        }
+    }
+    else {
+        [friend setObject:@YES forKey:@"touched"];
+    }
+    
+    [tableView reloadRowsAtIndexPaths:@[indexPath] withRowAnimation:UITableViewRowAnimationAutomatic];
+}
+
+-(BOOL) isTouched:(NSDictionary*)friend
+{
+    return [[friend objectForKey:@"touched"] boolValue];
+}
+
+-(BOOL) isBeingRemoved:(NSDictionary*)friend
+{
+    return [[friend objectForKey:@"action"] isEqualToString:@"remove"];
 }
 
 #pragma Shake Gesture
 
 - (void) onShake {
-    // YOUR CODE HERE
+    [API submitFriendDeletes:[self.friendsToDelete copy]];
+    [self.friendsToDelete removeAllObjects];
 }
 
 @end
