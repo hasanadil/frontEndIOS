@@ -1,0 +1,59 @@
+Question 1 + 2
+===================
+
+Question 1 and 2 involve simply implementing a single function: asyncMap and asnycTree
+respectively in Question1.m and Question2.m. There is a simple test for each function in
+PrismaticInterviewQuestionTests.m (no gurantee shit will work just because those pass, but
+it's better than nothing.).
+
+Question 2 may use code from Question 1.
+
+Question 3
+===================
+
+Question 3 involves actually building out some view and controller code. The core class here is
+Question3TableViewController that is the only one you will need to write in (but you should read API.h and API.m).
+
+In this question you will be displaying (part 1) and  editing (part 2) a dynamically changing list of friends.
+
+part 1
+---------
+
+
+For this question, your constructor for Question3TableViewController registers as a listener to [API listenForFriendActions] which will
+be called when the user's friends change and it will be called with an array of actions. Each action will be data in the form
+of nested NSDictionary, NSArray, NSNumber, or NSString. For instance an add message will look like this (using the new
+Objective-C data literal format):
+
+			@{@"action": @"add", @"friend":@{@"id":@42, @"name":@"Mr. New Friend", @"strength":@0.9}}
+
+Or a remove message:
+		
+			@{@"action": @"remove", @"friend":@{@"id":@43, @"name":@"Mr. No longer Friend",@"strength":@0.6}}
+		
+		
+While receiving changes from the 'backend', you will be displaying a live updating list of user friend names in the table view
+for the root view controller Question3TableViewController. When a friends gets added, they should be appened to the
+bottom of the list and should disappear if removed. The only thing each cell needs to display is the @"name" field under
+friend.
+
+NOTE: Do not worry about animating the additions and deletion of cells.
+
+
+part 2
+----------
+
+Let the user delete friends from the list. When a user taps a name,
+
+1. Change the color of the name to red to indicate a pending delete OR back to black if it was already red to undo the pending action
+2. Change the 'accessoryType' of the cell to UITableViewCellAccessoryCheckmark or UITableViewCellAccessoryNone, where a check indicates a pending delete 
+
+When the user shakes the phone (you can simulate this in the simulator), the app delete will call  [Question3TableViewController onShake] and here
+you should make all pending deletes and remove them from the list (as though you received a @"remove" action as above). Note that the friend update listener from Part 1 will NOT call you for changes initiated 
+by the user.
+
+You should also call [API submitFriendDeletes] with an NSArray of friend objects to commit the delete. Remember, when you submit the users for deletion, you need the whole friend object, not just the name. You 
+must include the id, name, and strength fields you were passed down. Also, remember that the backend can delete a user which has a pending delete. In that case, the user should be immediately removed from the 
+list.
+
+You may use code from Question 1 and/or 2.
