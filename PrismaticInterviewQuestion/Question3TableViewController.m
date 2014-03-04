@@ -31,11 +31,6 @@
         
         // All callbacks happen on background thread
         [API listenForFriendActions:^(NSArray* actionInfos) {
-            //NSLog(@"actionInfos %@", actionInfos);
-            
-            CallbackFn callback = ^(id obj) {
-                NSLog(@"%@", obj);
-            };
             
             //create array to functions
             for (NSDictionary* actionInfo in actionInfos) {
@@ -64,11 +59,8 @@
                     [self.fns addObject:fn];
                 }
             }
-            NSLog(@"fns count %d", [self.fns count]);
-            NSLog(@"");
             
             [Question1 asyncMap:self.fns whenDone:^(NSArray* res0) {
-                //NSLog(@"%@", self.friends);
                 [self.fns removeAllObjects];
                 [Question1 onMainThread:^{
                     [[self tableView] reloadData];
